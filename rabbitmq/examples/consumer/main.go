@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/daxiong/tool-kit/rabbitmq"
-	"github.com/daxiong/tool-kit/rabbitmq/consumer"
+	"github.com/daxiong0327/tool-kit/rabbitmq"
+	"github.com/daxiong0327/tool-kit/rabbitmq/consumer"
 )
 
 func main() {
@@ -36,14 +36,14 @@ func main() {
 
 	// 创建消费者配置
 	consumerConfig := consumer.Config{
-		Queue:          "test_queue",
-		Exchange:       "test_exchange",
-		ExchangeType:   "direct",
-		RoutingKey:     "test_key",
-		QueueDurable:   true,
+		Queue:           "test_queue",
+		Exchange:        "test_exchange",
+		ExchangeType:    "direct",
+		RoutingKey:      "test_key",
+		QueueDurable:    true,
 		ExchangeDurable: true,
-		AutoAck:        false,
-		PrefetchCount:  1,
+		AutoAck:         false,
+		PrefetchCount:   1,
 	}
 
 	// 创建消费者
@@ -85,7 +85,7 @@ func main() {
 	// 等待退出信号
 	<-sigCh
 	fmt.Println("接收到退出信号，正在关闭消费者...")
-	cancel() // 取消上下文，停止消费
+	cancel()                    // 取消上下文，停止消费
 	time.Sleep(1 * time.Second) // 给一些时间完成清理工作
 }
 

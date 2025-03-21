@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/daxiong/tool-kit/rabbitmq"
+	"github.com/daxiong0327/tool-kit/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
