@@ -71,7 +71,7 @@ type Consumer struct {
 
 // New 创建一个新的消费者
 func New(connManager *rabbitmq.ConnectionManager, config Config) (*Consumer, error) {
-	// u8bbeu7f6eu9ed8u8ba4u503c
+	// 设置默认值
 	if config.ExchangeType == "" {
 		config.ExchangeType = "direct"
 	}
@@ -95,7 +95,7 @@ func New(connManager *rabbitmq.ConnectionManager, config Config) (*Consumer, err
 	// 设置连接状态
 	connManager.SetCallbacks(
 		func() { c.handleReconnect() },
-		func(err error) { /* u65adu5f00u8fdeu63a5u65f6u7684u5904u7406 */ },
+		func(err error) { /* do nothing */ },
 	)
 
 	return c, nil
