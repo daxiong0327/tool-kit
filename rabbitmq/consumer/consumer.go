@@ -56,6 +56,9 @@ type Config struct {
 
 	// BindingArgs 绑定参数
 	BindingArgs map[string]interface{}
+
+	// MaxPriority 队列支持的最大优先级 (0-255，推荐1-5)
+	MaxPriority uint8
 }
 
 // Consumer RabbitMQ 消费者
@@ -76,6 +79,27 @@ func New(connManager *rabbitmq.ConnectionManager, config Config) (*Consumer, err
 		config.ExchangeType = "direct"
 	}
 
+	if config.ConsumerTag == "" {
+		config.ConsumerTag = fmt.Sprintf("consumer-%d", time.Now().UnixNano())
+	}
+
+	if config.QueueArgs == nil {
+		config.QueueArgs = make(map[string]interface{})
+	}
+
+	// 如果设置了最大优先级，添加到队列参数中
+	if config.MaxPriority > 0 {
+		config.QueueArgs["x-max-priority"] = config.MaxPriority
+	}
+
+	if config.ExchangeArgs == nil {
+		config.ExchangeArgs = make(map[string]interface{})
+	}
+
+	if config.BindingArgs == nil {
+		config.BindingArgs = make(map[string]interface{})
+	}
+
 	if config.PrefetchCount <= 0 {
 		config.PrefetchCount = 1
 	}
@@ -92,10 +116,10 @@ func New(connManager *rabbitmq.ConnectionManager, config Config) (*Consumer, err
 		return nil, err
 	}
 
-	// 设置连接状态
+	// 设置连接状态回调
 	connManager.SetCallbacks(
 		func() { c.handleReconnect() },
-		func(err error) { /* do nothing */ },
+		func(err error) { /* 断开连接时的处理 */ },
 	)
 
 	return c, nil

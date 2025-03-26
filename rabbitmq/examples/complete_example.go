@@ -37,7 +37,7 @@ func main() {
 
 	// 设置Exchange和Queue名称
 	exchangeName := "fake_live_task_test"
-	queueName := "fake_live_task_queue"
+	queueName := "fake_live_task_priority_queue"
 	routingKey := "fake_live_task"
 
 	// 启动生产者
@@ -63,11 +63,14 @@ func runProducer(connManager *rabbitmq.ConnectionManager, exchange, routingKey s
 	// 创建生产者配置
 	producerConfig := producer.Config{
 		Exchange:     exchange,
-		ExchangeType: "direct",
+		ExchangeType: "fanout",
 		RoutingKey:   routingKey,
 		Durable:      true,
 		DeliveryMode: 2, // 持久化消息
 		ContentType:  "application/json",
+		// 添加优先级配置
+		MaxPriority:     5, // 设置最大优先级为5
+		DefaultPriority: 1, // 设置默认优先级为1
 	}
 
 	// 创建生产者
@@ -90,12 +93,49 @@ func runProducer(connManager *rabbitmq.ConnectionManager, exchange, routingKey s
 			"task_type": "fake_live_task",
 		}
 
-		// 使用JSON格式发送消息
-		err := p.PublishJSON(ctx, msg)
+		// 根据消息ID决定优先级
+		priority := uint8(counter%5 + 1) // 优先级从1到5循环
+		msg["priority"] = priority
+
+		// 使用不同的优先级发送消息
+		jsonData, err := json.Marshal(msg)
+		if err != nil {
+			log.Printf("消息序列化失败: %v", err)
+			continue
+		}
+
+		// 使用优先级发送消息
+		err = p.PublishWithPriority(ctx, jsonData, nil, priority)
 		if err != nil {
 			log.Printf("发送消息失败: %v", err)
 		} else {
-			fmt.Printf("消息已发送: %+v\n", msg)
+			fmt.Printf("消息已发送 (优先级: %d): %+v\n", priority, msg)
+		}
+
+		// 每5条消息发送一条高优先级消息
+		if counter%5 == 0 {
+			highPriorityMsg := map[string]interface{}{
+				"id":        counter * 100,
+				"message":   fmt.Sprintf("这是一条高优先级消息(%d)", counter),
+				"time":      time.Now().Format(time.RFC3339),
+				"task_type": "fake_live_task",
+				"priority":  5,
+			}
+
+			// 序列化高优先级消息
+			highPriorityData, err := json.Marshal(highPriorityMsg)
+			if err != nil {
+				log.Printf("高优先级消息序列化失败: %v", err)
+				continue
+			}
+
+			// 使用JSON格式发送高优先级消息
+			err = p.PublishWithPriority(ctx, highPriorityData, nil, 5) // 使用最高优先级
+			if err != nil {
+				log.Printf("发送高优先级消息失败: %v", err)
+			} else {
+				fmt.Printf("高优先级消息已发送: %+v\n", highPriorityMsg)
+			}
 		}
 
 		counter++
@@ -109,12 +149,14 @@ func runConsumer(connManager *rabbitmq.ConnectionManager, exchange, queue, routi
 	consumerConfig := consumer.Config{
 		Queue:           queue,
 		Exchange:        exchange,
-		ExchangeType:    "direct",
+		ExchangeType:    "fanout",
 		RoutingKey:      routingKey,
 		QueueDurable:    true,
 		ExchangeDurable: true,
 		AutoAck:         false,
 		PrefetchCount:   1,
+		// 添加优先级配置
+		MaxPriority: 5, // 设置最大优先级为5
 	}
 
 	// 创建消费者

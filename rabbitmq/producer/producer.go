@@ -48,6 +48,12 @@ type Config struct {
 
 	// ExchangeArgs 交换机参数
 	ExchangeArgs map[string]interface{}
+
+	// MaxPriority 队列支持的最大优先级 (0-255，推荐1-5)
+	MaxPriority uint8
+
+	// DefaultPriority 默认消息优先级
+	DefaultPriority uint8
 }
 
 // Producer RabbitMQ消息生产者
@@ -79,6 +85,14 @@ func New(connManager *rabbitmq.ConnectionManager, config Config) (*Producer, err
 
 	if config.ConfirmTimeout == 0 {
 		config.ConfirmTimeout = 5 * time.Second
+	}
+
+	if config.MaxPriority == 0 {
+		config.MaxPriority = 5 // 默认最大优先级
+	}
+
+	if config.DefaultPriority == 0 {
+		config.DefaultPriority = 1 // 默认优先级
 	}
 
 	p := &Producer{
@@ -202,6 +216,11 @@ func (p *Producer) handleReconnect() {
 
 // Publish 发布消息
 func (p *Producer) Publish(ctx context.Context, body []byte, headers map[string]interface{}) error {
+	return p.PublishWithPriority(ctx, body, headers, p.config.DefaultPriority)
+}
+
+// PublishWithPriority 发布带优先级的消息
+func (p *Producer) PublishWithPriority(ctx context.Context, body []byte, headers map[string]interface{}, priority uint8) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -213,6 +232,11 @@ func (p *Producer) Publish(ctx context.Context, body []byte, headers map[string]
 		return rabbitmq.ErrChannelClosed
 	}
 
+	// 如果优先级超过最大值，则使用最大值
+	if priority > p.config.MaxPriority && p.config.MaxPriority > 0 {
+		priority = p.config.MaxPriority
+	}
+
 	// 准备消息
 	msg := amqp.Publishing{
 		Headers:         headers,
@@ -221,6 +245,11 @@ func (p *Producer) Publish(ctx context.Context, body []byte, headers map[string]
 		Body:            body,
 		DeliveryMode:    p.config.DeliveryMode,
 		Timestamp:       time.Now(),
+	}
+
+	// 如果设置了优先级，则添加到消息中
+	if p.config.MaxPriority > 0 && priority > 0 {
+		msg.Priority = priority
 	}
 
 	// 发布消息
