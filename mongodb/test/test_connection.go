@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // User 用户结构体
@@ -28,7 +27,7 @@ func main() {
 
 	// 创建MongoDB客户端
 	config := &mongodb.Config{
-		URI:            "mongodb://localhost:27017/awakening_memory?authSource=admin",
+		URI:            "mongodb://localhost:27017/awakening_memory",
 		Database:       "awakening_memory",
 		ConnectTimeout: 10 * time.Second,
 		SocketTimeout:  5 * time.Second,
@@ -128,9 +127,9 @@ func main() {
 
 	// 测试索引操作
 	fmt.Println("\n8. 测试索引操作...")
-	indexModel := mongo.IndexModel{
-		Keys:    bson.M{"email": 1},
-		Options: options.Index().SetUnique(true),
+	indexModel := bson.M{
+		"key":    bson.M{"email": 1},
+		"unique": true,
 	}
 
 	indexName, err := client.CreateIndex(ctx, collection, indexModel)
